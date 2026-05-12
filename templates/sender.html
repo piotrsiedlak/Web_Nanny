@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>🎙️ Niania – Nadajnik</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: sans-serif;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      min-height: 100vh;
+      background: #1a1a2e;
+      color: #eee;
+    }
+    h1 { font-size: 1.6rem; margin-bottom: 0.5rem; }
+    #status {
+      font-size: 0.9rem;
+      margin-bottom: 1.5rem;
+      color: #aaa;
+    }
+    #btn {
+      width: 140px; height: 140px;
+      border-radius: 50%;
+      border: none;
+      font-size: 3rem;
+      cursor: pointer;
+      background: #e94560;
+      color: white;
+      transition: transform 0.15s, box-shadow 0.15s;
+      box-shadow: 0 0 0 0 rgba(233,69,96,0.4);
+    }
+    #btn.active {
+      background: #c0392b;
+      animation: pulse 1.2s infinite;
+    }
+    #btn:disabled { opacity: 0.4; cursor: default; animation: none; }
+    @keyframes pulse {
+      0%   { box-shadow: 0 0 0 0    rgba(233,69,96,0.6); }
+      70%  { box-shadow: 0 0 0 20px rgba(233,69,96,0); }
+      100% { box-shadow: 0 0 0 0    rgba(233,69,96,0); }
+    }
+    #label { margin-top: 1rem; font-size: 1rem; color: #ddd; }
+  </style>
+</head>
+<body>
+  <h1>🎙️ Elektroniczna Niania</h1>
+  <div id="status">Łączenie z serwerem…</div>
+  <button id="btn" disabled>🎙️</button>
+  <div id="label">Naciśnij, aby nadawać</div>
+
+  <script>
+    const btn = document.getElementById('btn');
+    const status = document.getElementById('status');
+    const label = document.getElementById('label');
+
+    const proto = 'wss';
+    const host = window.location.host;
+    const signal = new WebSocket(`${proto}://${host}/signal?role=sender`);
+
+    let pc = null;
+    let stream = null;
+    let recording = false;
+
+    function logStatus(text) {
+      console.log(text);
+      status.textContent = text;
+    }
+
+    signal.onopen = () => {
+      logStatus('✅ Połączono z serwerem sygnalizacji');
+      btn.disabled = false;
+    };
+
+    signal.onclose = (event) => {
+      console.error('Signaling closed', event);
+      logStatus('❌ Rozłączono z serwerem sygnalizacji');
+      btn.disabled = true;
+      stopRecording();
+    };
+
+    signal.onerror = (event) => {
+      console.error('Signaling error', event);
+      logStatus('⚠️ Błąd sygnalizacji');
+    };
+
+    signal.onmessage = async (event) => {
+      let message;
+      try {
+        message = JSON.parse(event.data);
+      } catch (error) {
+        console.warn('Invalid signaling message', event.data);
+        return;
+      }
+
+      if (message.type === 'answer') {
+        logStatus('✅ Odebrano odpowiedź');
+        if (pc) {
+          await pc.setRemoteDescription(message.sdp);
+        }
+      } else if (message.type === 'ice-candidate') {
+        if (pc && message.candidate) {
+          await pc.addIceCandidate(message.candidate);
+        }
+      } else if (message.type === 'status') {
+        logStatus(message.message);
+      } else {
+        console.log('Unknown signaling message', message);
+      }
+    };
+
+    btn.addEventListener('click', async () => {
+      if (!recording) {
+        await startRecording();
+      } else {
+        stopRecording();
+      }
+    });
+
+    async function startRecording() {
+      if (signal.readyState !== WebSocket.OPEN) {
+        logStatus('⚠️ Połączenie sygnalizacyjne nie jest gotowe');
+        return;
+      }
+
+      const audioConstraints = {
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: true,
+          autoGainControl: false,
+          sampleRate: 16000,
+          channelCount: 1,
+        },
+      };
+
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(audioConstraints);
+      } catch (err) {
+        logStatus('❌ Brak dostępu do mikrofonu: ' + err.message);
+        return;
+      }
+
+      pc = createPeerConnection();
+      stream.getTracks().forEach((track) => {
+        const sender = pc.addTrack(track, stream);
+        if (sender.getParameters) {
+          const params = sender.getParameters();
+          params.encodings = params.encodings || [{}];
+          params.encodings[0].maxBitrate = 32000;
+          sender.setParameters(params).catch((error) => {
+            console.warn('Nie udało się ustawić parametrów audio:', error);
+          });
+        }
+      });
+
+      try {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        signal.send(JSON.stringify({ type: 'offer', sdp: pc.localDescription }));
+        logStatus('🔴 Tworzę połączenie...');
+      } catch (err) {
+        console.error('Offer creation failed', err);
+        logStatus('❌ Błąd tworzenia oferty');
+      }
+
+      recording = true;
+      btn.classList.add('active');
+      btn.textContent = '⏹️';
+      label.textContent = 'Nadaję… (naciśnij, aby zatrzymać)';
+    }
+
+    function createPeerConnection() {
+      const peer = new RTCPeerConnection({
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+      });
+
+      peer.onicecandidate = (event) => {
+        if (event.candidate && signal.readyState === WebSocket.OPEN) {
+          signal.send(JSON.stringify({ type: 'ice-candidate', candidate: event.candidate }));
+        }
+      };
+
+      peer.onconnectionstatechange = () => {
+        console.log('PC state:', peer.connectionState);
+        if (peer.connectionState === 'connected') {
+          logStatus('✅ Połączono z odbiornikiem');
+        } else if (peer.connectionState === 'failed' || peer.connectionState === 'disconnected') {
+          logStatus('⚠️ Połączenie WebRTC utracone');
+          stopRecording();
+        }
+      };
+
+      return peer;
+    }
+
+    function stopRecording() {
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+        stream = null;
+      }
+      if (pc) {
+        pc.close();
+        pc = null;
+      }
+      recording = false;
+      btn.classList.remove('active');
+      btn.textContent = '🎙️';
+      label.textContent = 'Naciśnij, aby nadawać';
+      logStatus('⏹️ Zatrzymano');
+    }
+  </script>
+</body>
+</html>
+

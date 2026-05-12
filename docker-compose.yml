@@ -1,0 +1,11 @@
+version: '3.9'
+
+services:
+  web_nanny:
+    build: .
+    container_name: web_nanny
+    network_mode: host
+    volumes:
+      - ./cert.pem:/app/cert.pem:ro
+      - ./key.pem:/app/key.pem:ro
+    restart: unless-stopped

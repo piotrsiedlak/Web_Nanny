@@ -1,0 +1,34 @@
+# Environment / build artifacts
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*~
+.DS_Store
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Secrets / certificates
+cert.pem
+key.pem
+*.crt
+*.key
+*.pem
+.env
+.env.*
+
+# Backups / archives
+backup.tar.gz
+*.tar.gz
+*.zip
