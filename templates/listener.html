@@ -75,9 +75,15 @@
     const volBarWrap = document.getElementById('volume-bar-wrap');
     const volBar = document.getElementById('volume-bar');
 
-    const proto = 'wss';
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
     const host = window.location.host;
-    const signal = new WebSocket(`${proto}://${host}/signal?role=listener`);
+
+    // session id to allow reconnection from same client
+    const sessionId = Math.random().toString(36).slice(2);
+    let signal = null;
+    let pingInterval = null;
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 10;
 
     let pc = null;
     let listening = false;
@@ -90,6 +96,114 @@
     let cryDetected = false;
     let cryScore = 0;
     const cryStatus = document.getElementById('cry-status');
+    let wakeLock = null;
+
+    function startPing() {
+      stopPing();
+      pingInterval = setInterval(() => {
+        if (signal && signal.readyState === WebSocket.OPEN) {
+          signal.send(JSON.stringify({ type: 'ping' }));
+        }
+      }, 15000);
+    }
+
+    function stopPing() {
+      if (pingInterval) {
+        clearInterval(pingInterval);
+        pingInterval = null;
+      }
+    }
+
+    async function requestWakeLock() {
+      try {
+        if ('wakeLock' in navigator && !wakeLock) {
+          wakeLock = await navigator.wakeLock.request('screen');
+          wakeLock.addEventListener('release', () => {
+            console.log('Wake lock released');
+            wakeLock = null;
+          });
+        }
+      } catch (err) {
+        console.warn('Wake lock not available:', err);
+      }
+    }
+
+    async function releaseWakeLock() {
+      try {
+        if (wakeLock) {
+          await wakeLock.release();
+          wakeLock = null;
+        }
+      } catch (err) {
+        console.warn('Failed to release wake lock:', err);
+      }
+    }
+
+    function createSignal() {
+      const url = `${proto}://${host}/signal?role=listener&sid=${sessionId}`;
+      const s = new WebSocket(url);
+      signal = s;
+
+      s.onopen = () => {
+        reconnectAttempts = 0;
+        logStatus(texts[lang].connected);
+        btn.disabled = false;
+        startPing();
+      };
+
+      s.onclose = (event) => {
+        console.error('Signaling closed', event);
+        logStatus(texts[lang].disconnected);
+        btn.disabled = true;
+        stopPing();
+        stopListening();
+        if (reconnectAttempts < maxReconnectAttempts) {
+          const delay = Math.min(30000, 1000 * Math.pow(2, reconnectAttempts));
+          reconnectAttempts += 1;
+          setTimeout(createSignal, delay);
+        }
+      };
+
+      s.onerror = (event) => {
+        console.error('Signaling error', event);
+        logStatus(texts[lang].error);
+      };
+
+      s.onmessage = async (event) => {
+        let message;
+        try {
+          message = JSON.parse(event.data);
+        } catch (error) {
+          console.warn('Invalid signaling message', event.data);
+          return;
+        }
+
+        if (message.type === 'pong') {
+          // heartbeat reply
+          return;
+        }
+
+        if (message.type === 'offer') {
+          logStatus(texts[lang].offerReceived);
+          if (!pc) {
+            createPeerConnection();
+          }
+          await pc.setRemoteDescription(message.sdp);
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          signal.send(JSON.stringify({ type: 'answer', sdp: pc.localDescription }));
+          logStatus(texts[lang].answerSent);
+        } else if (message.type === 'ice-candidate') {
+          if (pc && message.candidate) {
+            await pc.addIceCandidate(message.candidate);
+          }
+        } else if (message.type === 'status') {
+          logStatus(message.message);
+        } else {
+          console.log('Unknown signaling message', message);
+        }
+      };
+    }
 
     const lang = '{{ lang }}';
     const texts = {
@@ -127,10 +241,19 @@
       }
     };
 
+    // start initial connection (after texts defined)
+    createSignal();
+
     function logStatus(text) {
       console.log(text);
       status.textContent = text;
     }
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && listening) {
+        requestWakeLock();
+      }
+    });
 
     function setCryStatus(detected) {
       cryDetected = detected;
@@ -215,52 +338,7 @@
       requestAnimationFrame(analyzeAudio);
     }
 
-    signal.onopen = () => {
-      logStatus(texts[lang].connected);
-      btn.disabled = false;
-    };
-
-    signal.onclose = (event) => {
-      console.error('Signaling closed', event);
-      logStatus(texts[lang].disconnected);
-      btn.disabled = true;
-      stopListening();
-    };
-
-    signal.onerror = (event) => {
-      console.error('Signaling error', event);
-      logStatus(texts[lang].error);
-    };
-
-    signal.onmessage = async (event) => {
-      let message;
-      try {
-        message = JSON.parse(event.data);
-      } catch (error) {
-        console.warn('Invalid signaling message', event.data);
-        return;
-      }
-
-      if (message.type === 'offer') {
-        logStatus(texts[lang].offerReceived);
-        if (!pc) {
-          createPeerConnection();
-        }
-        await pc.setRemoteDescription(message.sdp);
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        signal.send(JSON.stringify({ type: 'answer', sdp: pc.localDescription }));
-        logStatus(texts[lang].answerSent);
-      } else if (message.type === 'ice-candidate') {
-        if (pc && message.candidate) {
-          await pc.addIceCandidate(message.candidate);
-        }
-      } else if (message.type === 'status') {
-        logStatus(message.message);
-      } else {
-        console.log('Unknown signaling message', message);
-      }
-    };
+    
 
     function createPeerConnection() {
       pc = new RTCPeerConnection({
@@ -268,7 +346,7 @@
       });
 
       pc.onicecandidate = (event) => {
-        if (event.candidate && signal.readyState === WebSocket.OPEN) {
+        if (event.candidate && signal && signal.readyState === WebSocket.OPEN) {
           signal.send(JSON.stringify({ type: 'ice-candidate', candidate: event.candidate }));
         }
       };
@@ -323,6 +401,8 @@
       label.textContent = texts[lang].listening;
       logStatus(texts[lang].waiting);
       volBarWrap.style.display = 'block';
+      // try to keep screen awake while listening
+      requestWakeLock();
       if (audioEl && audioEl.srcObject) {
         playAudioIfReady();
       }
@@ -342,6 +422,7 @@
         audioEl.pause();
       }
       stopAnalyzer();
+      releaseWakeLock();
     }
   </script>
 </body>
