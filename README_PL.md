@@ -39,8 +39,8 @@ Web Nanny to lekki monitor dla dziecka działający w przeglądarce z transmisj�
    ```
 
 4. Otwórz w przeglądarce:
-   - `https://<host>:2137/sender`
-   - `https://<host>:2137/listener`
+   - `https://<host>:8001/sender`
+   - `https://<host>:8001/listener`
 
 ### Uruchomienie z Dockerem
 
@@ -55,8 +55,14 @@ Web Nanny to lekki monitor dla dziecka działający w przeglądarce z transmisj�
    ```
 
 3. Otwórz w przeglądarce:
-   - `https://<raspi-ip>:2137/sender`
-   - `https://<raspi-ip>:2137/listener`
+   - `https://<raspi-ip>:8001`
+
+## Przepływ użytkowania
+
+1. Przejdź do strony głównej pod adresem `https://<host>:8001`.
+2. Wybierz preferowany język (polski lub angielski).
+3. Wybierz swoją rolę: Nadajnik (do nadawania dźwięku) lub Odbiornik (do odbioru i monitorowania dźwięku z detekcją płaczu).
+4. Postępuj zgodnie z instrukcjami na ekranie, aby rozpocząć/zatrzymać transmisję dźwięku.
 
 ## Uwagi
 

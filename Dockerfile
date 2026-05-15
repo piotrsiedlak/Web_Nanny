@@ -10,6 +10,6 @@ COPY templates ./templates
 COPY cert.pem ./cert.pem
 COPY key.pem ./key.pem
 
-EXPOSE 2137
+EXPOSE 8001
 
 CMD ["python", "main.py"]

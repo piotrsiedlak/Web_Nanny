@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="{{ lang }}">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>🔊 Niania – Odbiornik</title>
+  <title>{% if lang == 'en' %}🔊 Nanny – Listener{% else %}🔊 Niania – Odbiornik{% endif %}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -61,11 +61,11 @@
   </style>
 </head>
 <body>
-  <h1>🔊 Elektroniczna Niania</h1>
-  <div id="status">Łączenie z serwerem…</div>
+  <h1>{% if lang == 'en' %}🔊 Electronic Nanny{% else %}🔊 Elektroniczna Niania{% endif %}</h1>
+  <div id="status">{% if lang == 'en' %}Connecting to server…{% else %}Łączenie z serwerem…{% endif %}</div>
   <button id="btn" disabled>🔊</button>
-  <div id="label">Naciśnij, aby odsłuchiwać</div>
-  <div id="cry-status">Stan detekcji: brak danych</div>
+  <div id="label">{% if lang == 'en' %}Press to listen{% else %}Naciśnij, aby odsłuchiwać{% endif %}</div>
+  <div id="cry-status">{% if lang == 'en' %}Detection status: no data{% else %}Stan detekcji: brak danych{% endif %}</div>
   <div id="volume-bar-wrap"><div id="volume-bar"></div></div>
 
   <script>
@@ -91,6 +91,42 @@
     let cryScore = 0;
     const cryStatus = document.getElementById('cry-status');
 
+    const lang = '{{ lang }}';
+    const texts = {
+      pl: {
+        connected: '✅ Połączono z serwerem sygnalizacji',
+        disconnected: '❌ Rozłączono z serwerem sygnalizacji',
+        error: '⚠️ Błąd sygnalizacji',
+        offerReceived: '🔵 Odebrano ofertę',
+        answerSent: '✅ Wysłano odpowiedź',
+        listenerConnected: '✅ Odbiornik połączony',
+        webrtcFailed: '⚠️ Połączenie WebRTC nieudane',
+        waiting: '🔵 Czekam na dźwięk',
+        stopped: '⏹️ Zatrzymano',
+        pressToListen: 'Naciśnij, aby odsłuchiwać',
+        listening: 'Odsłuchuję… (naciśnij, aby zatrzymać)',
+        cryDetected: '🚨 Płacz wykryty',
+        noCry: '✅ Brak płaczu',
+        detectionNoData: 'Stan detekcji: brak danych'
+      },
+      en: {
+        connected: '✅ Connected to signaling server',
+        disconnected: '❌ Disconnected from signaling server',
+        error: '⚠️ Signaling error',
+        offerReceived: '🔵 Offer received',
+        answerSent: '✅ Answer sent',
+        listenerConnected: '✅ Listener connected',
+        webrtcFailed: '⚠️ WebRTC connection failed',
+        waiting: '🔵 Waiting for sound',
+        stopped: '⏹️ Stopped',
+        pressToListen: 'Press to listen',
+        listening: 'Listening… (press to stop)',
+        cryDetected: '🚨 Cry detected',
+        noCry: '✅ No cry',
+        detectionNoData: 'Detection status: no data'
+      }
+    };
+
     function logStatus(text) {
       console.log(text);
       status.textContent = text;
@@ -99,10 +135,10 @@
     function setCryStatus(detected) {
       cryDetected = detected;
       if (detected) {
-        cryStatus.textContent = '🚨 Płacz wykryty';
+        cryStatus.textContent = texts[lang].cryDetected;
         cryStatus.style.color = '#e94560';
       } else {
-        cryStatus.textContent = '✅ Brak płaczu';
+        cryStatus.textContent = texts[lang].noCry;
         cryStatus.style.color = '#8fe3ff';
       }
     }
@@ -180,20 +216,20 @@
     }
 
     signal.onopen = () => {
-      logStatus('✅ Połączono z serwerem sygnalizacji');
+      logStatus(texts[lang].connected);
       btn.disabled = false;
     };
 
     signal.onclose = (event) => {
       console.error('Signaling closed', event);
-      logStatus('❌ Rozłączono z serwerem sygnalizacji');
+      logStatus(texts[lang].disconnected);
       btn.disabled = true;
       stopListening();
     };
 
     signal.onerror = (event) => {
       console.error('Signaling error', event);
-      logStatus('⚠️ Błąd sygnalizacji');
+      logStatus(texts[lang].error);
     };
 
     signal.onmessage = async (event) => {
@@ -206,7 +242,7 @@
       }
 
       if (message.type === 'offer') {
-        logStatus('🔵 Odebrano ofertę');
+        logStatus(texts[lang].offerReceived);
         if (!pc) {
           createPeerConnection();
         }
@@ -214,7 +250,7 @@
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
         signal.send(JSON.stringify({ type: 'answer', sdp: pc.localDescription }));
-        logStatus('✅ Wysłano odpowiedź');
+        logStatus(texts[lang].answerSent);
       } else if (message.type === 'ice-candidate') {
         if (pc && message.candidate) {
           await pc.addIceCandidate(message.candidate);
@@ -249,9 +285,9 @@
       pc.onconnectionstatechange = () => {
         console.log('PC state:', pc.connectionState);
         if (pc.connectionState === 'connected') {
-          logStatus('✅ Odbiornik połączony');
+          logStatus(texts[lang].listenerConnected);
         } else if (pc.connectionState === 'failed') {
-          logStatus('⚠️ Połączenie WebRTC nieudane');
+          logStatus(texts[lang].webrtcFailed);
         }
       };
     }
@@ -284,8 +320,8 @@
       listening = true;
       btn.classList.add('active');
       btn.textContent = '⏹️';
-      label.textContent = 'Odsłuchuję… (naciśnij, aby zatrzymać)';
-      logStatus('🔵 Czekam na dźwięk');
+      label.textContent = texts[lang].listening;
+      logStatus(texts[lang].waiting);
       volBarWrap.style.display = 'block';
       if (audioEl && audioEl.srcObject) {
         playAudioIfReady();
@@ -299,8 +335,8 @@
       listening = false;
       btn.classList.remove('active');
       btn.textContent = '🔊';
-      label.textContent = 'Naciśnij, aby odsłuchiwać';
-      logStatus('⏹️ Zatrzymano');
+      label.textContent = texts[lang].pressToListen;
+      logStatus(texts[lang].stopped);
       volBarWrap.style.display = 'none';
       if (audioEl) {
         audioEl.pause();

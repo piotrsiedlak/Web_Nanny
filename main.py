@@ -6,26 +6,35 @@ import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from fastapi.requests import Request
+from fastapi.templating import Jinja2Templates
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
 template_dir = Path(__file__).parent / "templates"
+templates = Jinja2Templates(directory=str(template_dir))
 
 # Aktualnie podłączeni klienci
 sender_ws: WebSocket | None = None
 listener_ws: WebSocket | None = None
 
 
+@app.get("/")
+async def homepage(request: Request):
+    return templates.TemplateResponse("homepage.html", {"request": request})
+
+
 @app.get("/sender", response_class=HTMLResponse)
 async def sender_page(request: Request):
-    return (template_dir / "sender.html").read_text(encoding='utf-8', errors='replace')
+    lang = request.query_params.get("lang", "pl")
+    return templates.TemplateResponse("sender.html", {"request": request, "lang": lang})
 
 
 @app.get("/listener", response_class=HTMLResponse)
 async def listener_page(request: Request):
-    return (template_dir / "listener.html").read_text(encoding='utf-8', errors='replace')
+    lang = request.query_params.get("lang", "pl")
+    return templates.TemplateResponse("listener.html", {"request": request, "lang": lang})
 
 
 @app.websocket("/signal")
@@ -91,7 +100,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=2137,
+        port=8001,
         ssl_keyfile="key.pem",
         ssl_certfile="cert.pem",
         reload=False,

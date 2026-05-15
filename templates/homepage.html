@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Web Nanny - Wybór</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: sans-serif;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      min-height: 100vh;
+      background: #0f3460;
+      color: #eee;
+    }
+    h1 { font-size: 2rem; margin-bottom: 1rem; }
+    .lang-select { margin-bottom: 2rem; }
+    .lang-select label { margin-right: 1rem; }
+    .buttons { display: flex; gap: 1rem; }
+    .btn {
+      padding: 1rem 2rem;
+      font-size: 1.2rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      background: #16213e;
+      color: white;
+      transition: background 0.2s;
+    }
+    .btn:hover { background: #1a4a8a; }
+    .btn.sender { background: #e94560; }
+    .btn.sender:hover { background: #c0392b; }
+  </style>
+</head>
+<body>
+  <h1>Web Nanny</h1>
+  <div class="lang-select">
+    <label for="lang">Wybierz język:</label>
+    <select id="lang">
+      <option value="pl">Polski</option>
+      <option value="en">English</option>
+    </select>
+  </div>
+  <div class="buttons">
+    <button class="btn sender" onclick="goTo('sender')">Nadajnik</button>
+    <button class="btn" onclick="goTo('listener')">Odbiornik</button>
+  </div>
+
+  <script>
+    function goTo(role) {
+      const lang = document.getElementById('lang').value;
+      window.location.href = `/${role}?lang=${lang}`;
+    }
+  </script>
+</body>
+</html>

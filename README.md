@@ -39,8 +39,8 @@ Web Nanny is a lightweight browser-based baby monitor with WebRTC audio streamin
    ```
 
 4. Open in browser:
-   - `https://<host>:2137/sender`
-   - `https://<host>:2137/listener`
+   - `https://<host>:8001/sender`
+   - `https://<host>:8001/listener`
 
 ### Run with Docker
 
@@ -55,8 +55,14 @@ Web Nanny is a lightweight browser-based baby monitor with WebRTC audio streamin
    ```
 
 3. Open in browser:
-   - `https://<raspi-ip>:2137/sender`
-   - `https://<raspi-ip>:2137/listener`
+   - `https://<raspi-ip>:8001`
+
+## Usage Workflow
+
+1. Access the homepage at `https://<host>:8001`.
+2. Select your preferred language (Polish or English).
+3. Choose your role: Sender (to broadcast audio) or Listener (to receive and monitor audio with cry detection).
+4. Follow the on-screen instructions to start/stop audio streaming.
 
 ## Notes
 
