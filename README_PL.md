@@ -27,35 +27,58 @@ Web Nanny to lekki monitor dla dziecka działający w przeglądarce z transmisj�
    pip install -r requirements.txt
    ```
 
-2. Wygeneruj certyfikaty:
+2. Skonfiguruj opcjonalne zmienne środowiskowe dla lokalnego uruchomienia:
+   ```bash
+   export PORT=8001
+   export TLS_ENABLED=true
+   export TLS_CERTFILE=cert.pem
+   export TLS_KEYFILE=key.pem
+   export AUTH_ENABLED=false
+   export AUTH_TOKEN=twoj-sekretny-token
+   export RECONNECT_GRACE_SECONDS=30
+   export CLEANUP_INTERVAL_SECONDS=60
+   ```
+   W PowerShell użyj `$env:PORT = 8001` dla bieżącej sesji.
+
+3. Wygeneruj certyfikaty:
    ```bash
    openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes \
      -subj "/C=PL/ST=Warsaw/L=Warsaw/O=WebNanny/CN=localhost"
    ```
 
-3. Uruchom serwer:
+4. Uruchom serwer:
    ```bash
    python main.py
    ```
 
-4. Otwórz w przeglądarce:
+5. Otwórz w przeglądarce:
    - `https://<host>:8001/sender`
    - `https://<host>:8001/listener`
 
 ### Uruchomienie z Dockerem
 
-1. Zbuduj obraz:
+1. Utwórz plik `.env` na podstawie `.env.example` i zaktualizuj wartości:
+   ```bash
+   cp .env.example .env
+   ```
+   W PowerShell:
+   ```powershell
+   Copy-Item .env.example .env
+   ```
+
+2. Zbuduj obraz:
    ```bash
    docker build -t web_nanny .
    ```
 
-2. Uruchom kontener:
+3. Uruchom kontener:
    ```bash
    docker-compose up -d
    ```
 
-3. Otwórz w przeglądarce:
-   - `https://<raspi-ip>:8001`
+4. Otwórz w przeglądarce:
+   - `https://<host>:8001/sender`
+   - `https://<host>:8001/listener`
 
 ## Przepływ użytkowania
 

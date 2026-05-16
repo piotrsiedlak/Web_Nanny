@@ -29,7 +29,7 @@ Web Nanny is a lightweight browser-based baby monitor with WebRTC audio streamin
    pip install -r requirements.txt
    ```
 
-2. Configure optional environment variables:
+2. Configure optional environment variables for the local process:
    ```bash
    export PORT=8001
    export TLS_ENABLED=true
@@ -40,6 +40,7 @@ Web Nanny is a lightweight browser-based baby monitor with WebRTC audio streamin
    export RECONNECT_GRACE_SECONDS=30
    export CLEANUP_INTERVAL_SECONDS=60
    ```
+   On Windows PowerShell use `setx` or `$env:PORT = 8001` for the current session.
 
 3. Generate self-signed certificates if you want local HTTPS/WSS:
    ```bash
@@ -52,11 +53,19 @@ Web Nanny is a lightweight browser-based baby monitor with WebRTC audio streamin
    python main.py
    ```
 
+5. Open in browser:
+   - `https://<host>:8001/sender`
+   - `https://<host>:8001/listener`
+
 ### Run with Docker
 
 1. Create a `.env` file from `.env.example` and update values as needed:
    ```bash
    cp .env.example .env
+   ```
+   On Windows PowerShell:
+   ```powershell
+   Copy-Item .env.example .env
    ```
 
 2. Build the image:
@@ -72,25 +81,6 @@ Web Nanny is a lightweight browser-based baby monitor with WebRTC audio streamin
 4. Open in browser:
    - `https://<host>:8001/sender`
    - `https://<host>:8001/listener`
-
-4. Open in browser:
-   - `https://<host>:8001/sender`
-   - `https://<host>:8001/listener`
-
-### Run with Docker
-
-1. Build the image:
-   ```bash
-   docker build -t web_nanny .
-   ```
-
-2. Start the container:
-   ```bash
-   docker-compose up -d
-   ```
-
-3. Open in browser:
-   - `https://<raspi-ip>:8001`
 
 ## Usage Workflow
 
