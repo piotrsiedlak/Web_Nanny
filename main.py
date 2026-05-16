@@ -46,6 +46,24 @@ sessions: Dict[str, SessionInfo] = {}
 
 sender_ws: Optional[WebSocket] = None
 listener_ws: Optional[WebSocket] = None
+app_start_time = time.time()
+
+
+def validate_startup_config() -> None:
+    """Validate configuration on startup."""
+    if AUTH_ENABLED and not AUTH_TOKEN:
+        logger.warning("AUTH_ENABLED is true but AUTH_TOKEN is empty or not set")
+    
+    if TLS_ENABLED:
+        cert_path = Path(TLS_CERTFILE)
+        key_path = Path(TLS_KEYFILE)
+        if not cert_path.exists():
+            raise FileNotFoundError(f"TLS certificate not found: {TLS_CERTFILE}")
+        if not key_path.exists():
+            raise FileNotFoundError(f"TLS key not found: {TLS_KEYFILE}")
+        logger.info("TLS certificates validated successfully")
+    else:
+        logger.warning("TLS_ENABLED is false - running without HTTPS/WSS")
 
 
 def check_auth(token: Optional[str], auth_header: Optional[str] = None) -> bool:
@@ -86,7 +104,41 @@ async def cleanup_sessions() -> None:
 
 @app.on_event("startup")
 async def startup_event() -> None:
+    validate_startup_config()
     asyncio.create_task(cleanup_sessions())
+
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for monitoring and load balancers."""
+    return {
+        "status": "ok",
+        "uptime_seconds": time.time() - app_start_time,
+        "active_sessions": len(sessions),
+        "sender_connected": sender_ws is not None,
+        "listener_connected": listener_ws is not None,
+    }
+
+
+@app.get("/metrics")
+async def metrics():
+    """Metrics endpoint for monitoring active sessions and connections."""
+    active_sessions = {
+        sid: {
+            "role": session.role,
+            "connected": session.ws is not None,
+            "age_seconds": time.time() - session.created_at,
+            "idle_seconds": time.time() - session.last_activity,
+        }
+        for sid, session in sessions.items()
+    }
+    return {
+        "total_sessions": len(sessions),
+        "active_sessions": active_sessions,
+        "sender_ws_active": sender_ws is not None,
+        "listener_ws_active": listener_ws is not None,
+        "uptime_seconds": time.time() - app_start_time,
+    }
 
 
 @app.get("/")
