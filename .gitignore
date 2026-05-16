@@ -26,7 +26,6 @@ key.pem
 *.key
 *.pem
 .env
-.env.*
 
 # Backups / archives
 backup.tar.gz
