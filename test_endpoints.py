@@ -1,3 +1,5 @@
+import json
+
 import pytest
 from fastapi.testclient import TestClient
 from main import app
@@ -70,6 +72,22 @@ class TestWebSocketEndpoints:
         with client.websocket_connect("/listen") as websocket:
             # If we get here without exception, connection was successful
             assert websocket is not None
+
+    def test_websocket_signal_connection(self):
+        """Test /signal WebSocket endpoint accepts sender/listener connections"""
+        with client.websocket_connect("/signal?role=sender&sid=test-signal") as sender_ws:
+            assert sender_ws is not None
+
+        with client.websocket_connect("/signal?role=listener&sid=test-signal") as listener_ws:
+            assert listener_ws is not None
+
+    def test_websocket_signal_ping_pong(self):
+        """Test /signal WebSocket endpoint responds to ping messages"""
+        with client.websocket_connect("/signal?role=sender&sid=test-ping") as sender_ws:
+            with client.websocket_connect("/signal?role=listener&sid=test-ping") as listener_ws:
+                sender_ws.send_text(json.dumps({"type": "ping"}))
+                pong = sender_ws.receive_text()
+                assert pong and "pong" in pong
 
     def test_websocket_send_rejects_second_connection(self):
         """Test /send rejects second simultaneous connection"""

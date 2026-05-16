@@ -8,6 +8,8 @@ Web Nanny is a lightweight browser-based baby monitor with WebRTC audio streamin
 - One sender and one listener
 - Cry detection on the listener side
 - Local HTTPS/WSS support
+- Optional bearer auth for signaling and web pages
+- Reconnect-friendly session handling with keep-alive support
 - Docker support for Raspberry Pi / NAS deployment
 
 ## Local setup
@@ -27,13 +29,25 @@ Web Nanny is a lightweight browser-based baby monitor with WebRTC audio streamin
    pip install -r requirements.txt
    ```
 
-2. Generate self-signed certificates:
+2. Configure optional environment variables:
+   ```bash
+   export PORT=8001
+   export TLS_ENABLED=true
+   export TLS_CERTFILE=cert.pem
+   export TLS_KEYFILE=key.pem
+   export AUTH_ENABLED=false
+   export AUTH_TOKEN=your-secret-token
+   export RECONNECT_GRACE_SECONDS=30
+   export CLEANUP_INTERVAL_SECONDS=60
+   ```
+
+3. Generate self-signed certificates if you want local HTTPS/WSS:
    ```bash
    openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes \
      -subj "/C=PL/ST=Warsaw/L=Warsaw/O=WebNanny/CN=localhost"
    ```
 
-3. Start the server:
+4. Start the server:
    ```bash
    python main.py
    ```
