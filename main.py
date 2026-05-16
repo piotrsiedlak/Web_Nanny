@@ -48,6 +48,39 @@ sender_ws: Optional[WebSocket] = None
 listener_ws: Optional[WebSocket] = None
 app_start_time = time.time()
 
+# Rate limiting: track connection attempts by IP
+connection_attempts: Dict[str, list] = {}
+MAX_CONNECTIONS_PER_IP = 10
+RATE_LIMIT_WINDOW = 60  # seconds
+
+
+def get_client_ip(request_headers: dict) -> str:
+    """Extract client IP from headers (supports X-Forwarded-For for proxies)."""
+    if "x-forwarded-for" in request_headers:
+        return request_headers["x-forwarded-for"].split(",")[0].strip()
+    return request_headers.get("client-host", "unknown")
+
+
+def check_rate_limit(client_ip: str) -> bool:
+    """Check if client has exceeded connection rate limit."""
+    now = time.time()
+    if client_ip not in connection_attempts:
+        connection_attempts[client_ip] = []
+    
+    # Remove old attempts outside the window
+    connection_attempts[client_ip] = [
+        t for t in connection_attempts[client_ip] 
+        if now - t < RATE_LIMIT_WINDOW
+    ]
+    
+    # Check if limit exceeded
+    if len(connection_attempts[client_ip]) >= MAX_CONNECTIONS_PER_IP:
+        return False
+    
+    # Record this attempt
+    connection_attempts[client_ip].append(now)
+    return True
+
 
 def validate_startup_config() -> None:
     """Validate configuration on startup."""
@@ -166,6 +199,14 @@ async def listener_page(request: Request, token: Optional[str] = Query(None)):
 @app.websocket("/send")
 async def websocket_send(ws: WebSocket):
     global sender_ws, listener_ws
+    
+    # Rate limiting check
+    client_ip = get_client_ip(dict(ws.headers))
+    if not check_rate_limit(client_ip):
+        await ws.close(code=status.WS_1008_POLICY_VIOLATION, reason="Rate limit exceeded")
+        logger.warning("Rate limit exceeded for client %s on /send", client_ip)
+        return
+    
     if AUTH_ENABLED and not check_auth(ws.query_params.get("token"), ws.headers.get("authorization")):
         await ws.close(code=status.WS_1008_POLICY_VIOLATION)
         return
@@ -205,6 +246,14 @@ async def websocket_send(ws: WebSocket):
 @app.websocket('/listen')
 async def websocket_listen(ws: WebSocket):
     global sender_ws, listener_ws
+    
+    # Rate limiting check
+    client_ip = get_client_ip(dict(ws.headers))
+    if not check_rate_limit(client_ip):
+        await ws.close(code=status.WS_1008_POLICY_VIOLATION, reason="Rate limit exceeded")
+        logger.warning("Rate limit exceeded for client %s on /listen", client_ip)
+        return
+    
     if AUTH_ENABLED and not check_auth(ws.query_params.get("token"), ws.headers.get("authorization")):
         await ws.close(code=status.WS_1008_POLICY_VIOLATION)
         return
@@ -238,6 +287,13 @@ async def websocket_signal(ws: WebSocket):
     role = ws.query_params.get("role")
     sid = ws.query_params.get("sid")
     token = ws.query_params.get("token")
+    
+    # Rate limiting check
+    client_ip = get_client_ip(dict(ws.headers))
+    if not check_rate_limit(client_ip):
+        await ws.close(code=status.WS_1008_POLICY_VIOLATION, reason="Rate limit exceeded")
+        logger.warning("Rate limit exceeded for client %s", client_ip)
+        return
 
     if AUTH_ENABLED and not check_auth(token, ws.headers.get("authorization")):
         await ws.close(code=status.WS_1008_POLICY_VIOLATION)
