@@ -52,6 +52,27 @@ Web Nanny is a lightweight browser-based baby monitor with WebRTC audio streamin
    python main.py
    ```
 
+### Run with Docker
+
+1. Create a `.env` file from `.env.example` and update values as needed:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Build the image:
+   ```bash
+   docker build -t web_nanny .
+   ```
+
+3. Start the container:
+   ```bash
+   docker-compose up -d
+   ```
+
+4. Open in browser:
+   - `https://<host>:8001/sender`
+   - `https://<host>:8001/listener`
+
 4. Open in browser:
    - `https://<host>:8001/sender`
    - `https://<host>:8001/listener`

@@ -7,8 +7,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY main.py ./
 COPY templates ./templates
-COPY cert.pem ./cert.pem
-COPY key.pem ./key.pem
 
 EXPOSE 8001
 

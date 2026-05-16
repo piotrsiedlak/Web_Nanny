@@ -4,7 +4,19 @@ services:
   web_nanny:
     build: .
     container_name: web_nanny
-    network_mode: host
+    ports:
+      - "8001:8001"
+    env_file:
+      - .env
+    environment:
+      - PORT=${PORT:-8001}
+      - TLS_ENABLED=${TLS_ENABLED:-true}
+      - TLS_CERTFILE=${TLS_CERTFILE:-cert.pem}
+      - TLS_KEYFILE=${TLS_KEYFILE:-key.pem}
+      - AUTH_ENABLED=${AUTH_ENABLED:-false}
+      - AUTH_TOKEN=${AUTH_TOKEN:-}
+      - RECONNECT_GRACE_SECONDS=${RECONNECT_GRACE_SECONDS:-30}
+      - CLEANUP_INTERVAL_SECONDS=${CLEANUP_INTERVAL_SECONDS:-60}
     volumes:
       - ./cert.pem:/app/cert.pem:ro
       - ./key.pem:/app/key.pem:ro
