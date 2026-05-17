@@ -78,12 +78,12 @@ Web Nanny to lekki monitor dla dziecka działający w przeglądarce z transmisj�
    docker build -t web_nanny .
    ```
 
-3. Uruchom kontener:
+4. Uruchom kontener:
    ```bash
    docker-compose up -d
    ```
 
-4. Otwórz w przeglądarce:
+5. Otwórz w przeglądarce:
    - `https://<host>:8001/sender`
    - `https://<host>:8001/listener`
 

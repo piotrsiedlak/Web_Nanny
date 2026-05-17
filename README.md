@@ -80,12 +80,12 @@ Web Nanny is a lightweight browser-based baby monitor with WebRTC audio streamin
    docker build -t web_nanny .
    ```
 
-3. Start the container:
+4. Start the container:
    ```bash
    docker-compose up -d
    ```
 
-4. Open in browser:
+5. Open in browser:
    - `https://<host>:8001/sender`
    - `https://<host>:8001/listener`
 
