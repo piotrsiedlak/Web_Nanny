@@ -66,7 +66,14 @@ Web Nanny to lekki monitor dla dziecka działający w przeglądarce z transmisj�
    Copy-Item .env.example .env
    ```
 
-2. Zbuduj obraz:
+2. Wygeneruj lokalnie certyfikaty TLS, jeśli nie znajdują się jeszcze w katalogu projektu.
+   `cert.pem` i `key.pem` nie są przechowywane w repozytorium Git i muszą istnieć przed uruchomieniem Docker.
+   ```bash
+   openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes \
+     -subj "/C=PL/ST=Warsaw/L=Warsaw/O=WebNanny/CN=localhost"
+   ```
+
+3. Zbuduj obraz:
    ```bash
    docker build -t web_nanny .
    ```
