@@ -17,12 +17,14 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
 from fastapi import FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect, status
 from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
 template_dir = Path(__file__).parent / "templates"
+templates = Jinja2Templates(directory=str(template_dir))
 
 AUTH_ENABLED = os.getenv("AUTH_ENABLED", "false").lower() == "true"
 AUTH_TOKEN = os.getenv("AUTH_TOKEN", "")
@@ -245,19 +247,17 @@ async def homepage(request: Request):
 
 
 @app.get("/sender", response_class=HTMLResponse)
-async def sender_page(request: Request, token: Optional[str] = Query(None)):
+async def sender_page(request: Request, token: Optional[str] = Query(None), lang: Optional[str] = Query("en")):
     if AUTH_ENABLED and not check_auth(token, request.headers.get("authorization")):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
-    path = template_dir / "sender.html"
-    return HTMLResponse(path.read_text(encoding='utf-8'))
+    return templates.TemplateResponse("sender.html", {"request": request, "lang": lang})
 
 
 @app.get("/listener", response_class=HTMLResponse)
-async def listener_page(request: Request, token: Optional[str] = Query(None)):
+async def listener_page(request: Request, token: Optional[str] = Query(None), lang: Optional[str] = Query("en")):
     if AUTH_ENABLED and not check_auth(token, request.headers.get("authorization")):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
-    path = template_dir / "listener.html"
-    return HTMLResponse(path.read_text(encoding='utf-8'))
+    return templates.TemplateResponse("listener.html", {"request": request, "lang": lang})
 
 
 @app.websocket("/send")
