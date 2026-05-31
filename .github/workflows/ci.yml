@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services: {}
+    strategy:
+      matrix:
+        python: [3.11]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run unit tests
+        run: pytest -q
+
+      - name: Start app (background)
+        env:
+          PORT: 8001
+          TLS_ENABLED: "false"
+          AUTH_ENABLED: "false"
+        run: |
+          python main.py &>/tmp/webnanny.log &
+          echo $! > /tmp/webnanny.pid
+
+      - name: Wait for health endpoint
+        run: |
+          for i in {1..20}; do
+            if curl -fsS http://localhost:8001/health >/dev/null 2>&1; then
+              echo "health OK"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "health check failed, dumping logs:"
+          tail -n 200 /tmp/webnanny.log || true
+          exit 1
+
+      - name: Run smoke HTTP checks
+        run: |
+          curl -fsS http://localhost:8001/ || true
+          curl -fsS http://localhost:8001/sender || true
+          curl -fsS http://localhost:8001/listener || true
+
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: web_nanny:ci
