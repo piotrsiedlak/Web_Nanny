@@ -9,6 +9,8 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      RATE_LIMIT_ENABLED: "false"
     services: {}
     strategy:
       matrix:
