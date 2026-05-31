@@ -102,6 +102,7 @@
     let stream = null;
     let recording = false;
     let wakeLock = null;
+    let wakeLockRetry = null;
 
     function startPing() {
       stopPing();
@@ -120,14 +121,22 @@
     }
 
     async function requestWakeLock() {
+      if (!('wakeLock' in navigator)) {
+        return;
+      }
+      if (wakeLock) {
+        return;
+      }
       try {
-        if ('wakeLock' in navigator && !wakeLock) {
-          wakeLock = await navigator.wakeLock.request('screen');
-          wakeLock.addEventListener('release', () => {
-            console.log('Wake lock released');
-            wakeLock = null;
-          });
-        }
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', () => {
+          console.log('Wake lock released');
+          wakeLock = null;
+          if (recording) {
+            clearTimeout(wakeLockRetry);
+            wakeLockRetry = setTimeout(requestWakeLock, 2000);
+          }
+        });
       } catch (err) {
         console.warn('Wake lock not available:', err);
       }
@@ -141,6 +150,15 @@
         }
       } catch (err) {
         console.warn('Failed to release wake lock:', err);
+      } finally {
+        clearTimeout(wakeLockRetry);
+        wakeLockRetry = null;
+      }
+    }
+
+    function keepWakeLock() {
+      if (recording && document.visibilityState === 'visible') {
+        requestWakeLock();
       }
     }
 
@@ -214,9 +232,13 @@
     }
 
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible' && recording) {
-        requestWakeLock();
+      if (document.visibilityState === 'visible') {
+        keepWakeLock();
       }
+    });
+
+    window.addEventListener('focus', () => {
+      keepWakeLock();
     });
 
     btn.addEventListener('click', async () => {

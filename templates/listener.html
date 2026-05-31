@@ -97,6 +97,7 @@
     let cryScore = 0;
     const cryStatus = document.getElementById('cry-status');
     let wakeLock = null;
+    let wakeLockRetry = null;
 
     function startPing() {
       stopPing();
@@ -115,14 +116,22 @@
     }
 
     async function requestWakeLock() {
+      if (!('wakeLock' in navigator)) {
+        return;
+      }
+      if (wakeLock) {
+        return;
+      }
       try {
-        if ('wakeLock' in navigator && !wakeLock) {
-          wakeLock = await navigator.wakeLock.request('screen');
-          wakeLock.addEventListener('release', () => {
-            console.log('Wake lock released');
-            wakeLock = null;
-          });
-        }
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', () => {
+          console.log('Wake lock released');
+          wakeLock = null;
+          if (listening) {
+            clearTimeout(wakeLockRetry);
+            wakeLockRetry = setTimeout(requestWakeLock, 2000);
+          }
+        });
       } catch (err) {
         console.warn('Wake lock not available:', err);
       }
@@ -136,6 +145,15 @@
         }
       } catch (err) {
         console.warn('Failed to release wake lock:', err);
+      } finally {
+        clearTimeout(wakeLockRetry);
+        wakeLockRetry = null;
+      }
+    }
+
+    function keepWakeLock() {
+      if (listening && document.visibilityState === 'visible') {
+        requestWakeLock();
       }
     }
 
@@ -250,9 +268,21 @@
     }
 
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible' && listening) {
-        requestWakeLock();
+      if (document.visibilityState === 'visible') {
+        keepWakeLock();
+        if (audioContext && audioContext.state === 'suspended') {
+          audioContext.resume().catch((error) => console.warn('Failed to resume audio context', error));
+        }
+        playAudioIfReady();
       }
+    });
+
+    window.addEventListener('focus', () => {
+      keepWakeLock();
+      if (audioContext && audioContext.state === 'suspended') {
+        audioContext.resume().catch((error) => console.warn('Failed to resume audio context', error));
+      }
+      playAudioIfReady();
     });
 
     function setCryStatus(detected) {
@@ -402,7 +432,7 @@
       logStatus(texts[lang].waiting);
       volBarWrap.style.display = 'block';
       // try to keep screen awake while listening
-      requestWakeLock();
+      keepWakeLock();
       if (audioEl && audioEl.srcObject) {
         playAudioIfReady();
       }
