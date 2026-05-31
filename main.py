@@ -250,14 +250,14 @@ async def homepage(request: Request):
 async def sender_page(request: Request, token: Optional[str] = Query(None), lang: Optional[str] = Query("en")):
     if AUTH_ENABLED and not check_auth(token, request.headers.get("authorization")):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
-    return templates.TemplateResponse("sender.html", {"request": request, "lang": lang})
+    return templates.TemplateResponse(request, "sender.html", {"lang": lang})
 
 
 @app.get("/listener", response_class=HTMLResponse)
 async def listener_page(request: Request, token: Optional[str] = Query(None), lang: Optional[str] = Query("en")):
     if AUTH_ENABLED and not check_auth(token, request.headers.get("authorization")):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
-    return templates.TemplateResponse("listener.html", {"request": request, "lang": lang})
+    return templates.TemplateResponse(request, "listener.html", {"lang": lang})
 
 
 @app.websocket("/send")

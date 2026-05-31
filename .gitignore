@@ -1,6 +1,8 @@
 # Environment / build artifacts
 .venv/
 venv/
+.venv-1/
+venv-1
 __pycache__/
 .pytest_cache/
 *.py[cod]
