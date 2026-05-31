@@ -12,6 +12,13 @@ Web Nanny is a lightweight browser-based baby monitor with WebRTC audio streamin
 - Reconnect-friendly session handling with keep-alive support
 - Docker support for Raspberry Pi / NAS deployment
 
+## What's new (recent)
+
+- Automatic TLS certificate generation at startup when TLS is enabled and no cert files are present (no host-mounted certs required for Docker). (commit: Add automatic TLS certificate generation and simplify Docker onboarding)
+- Improved wake-lock and playback resilience to better support screen-off sender/listener behavior (commit: Improve wake-lock and playback resilience for screen-off transmission)
+- Health check and metrics endpoints plus startup validation. (commit: Add health check and metrics endpoints with startup validation)
+- Session-management, optional bearer auth, and reconnect-friendly behavior. (commit: Enhance WebSocket functionality with session management, authentication, and environment variable configuration)
+
 ## Local setup
 
 ### Requirements
@@ -68,8 +75,11 @@ Web Nanny is a lightweight browser-based baby monitor with WebRTC audio streamin
    Copy-Item .env.example .env
    ```
 
-2. The app now auto-generates `cert.pem` and `key.pem` on startup when TLS is enabled and certificates are missing. You do not need to pre-create host cert files for Docker.
-   - If you want to use your own certificates, place them in the project root before starting Docker and set `TLS_CERTFILE` / `TLS_KEYFILE` accordingly.
+2. TLS and certificates in Docker
+
+- If `TLS_ENABLED=true` and no certificate files are present, the app will auto-generate a self-signed `cert.pem` and `key.pem` at container startup (the container image includes the runtime dependency to generate certs).
+- You do not need to mount host certificate files into the container for basic testing.
+- To use custom certs, put your `cert.pem` and `key.pem` in the project root before running Docker and set `TLS_CERTFILE` / `TLS_KEYFILE` in `.env`.
 
 3. Build the image:
    ```bash

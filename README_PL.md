@@ -10,6 +10,13 @@ Web Nanny to lekki monitor dla dziecka działający w przeglądarce z transmisj�
 - Wsparcie lokalnego HTTPS/WSS
 - Obsługa Dockera dla Raspberry Pi / NAS
 
+## Nowości (ostatnie zmiany)
+
+- Automatyczne generowanie certyfikatów TLS przy starcie, gdy `TLS_ENABLED=true` i certyfikaty nie istnieją (nie jest wymagane montowanie certyfikatów z hosta w Docker). (commit: Add automatic TLS certificate generation and simplify Docker onboarding)
+- Poprawiona obsługa Wake Lock i odtwarzania, aby lepiej działać przy wyłączonym ekranie urządzeń źródłowych i odbiorczych. (commit: Improve wake-lock and playback resilience for screen-off transmission)
+- Endpointy health/metrics i walidacja startowa. (commit: Add health check and metrics endpoints with startup validation)
+- Zarządzanie sesjami, opcjonalne uwierzytelnianie bearer i lepsze zachowanie podczas rozłączeń/ponownego połączenia. (commit: Enhance WebSocket functionality with session management, authentication, and environment variable configuration)
+
 ## Uruchomienie lokalne
 
 ### Wymagania
@@ -66,9 +73,11 @@ Web Nanny to lekki monitor dla dziecka działający w przeglądarce z transmisj�
    Copy-Item .env.example .env
    ```
 
-2. Aplikacja teraz automatycznie wygeneruje `cert.pem` i `key.pem` przy uruchamianiu, gdy TLS jest włączony i certyfikaty nie istnieją.
-   Nie musisz wcześniej tworzyć plików certyfikatów dla Dockera.
-   - Jeśli chcesz użyć własnych certyfikatów, umieść je w katalogu projektu przed uruchomieniem Dockera i ustaw `TLS_CERTFILE` / `TLS_KEYFILE` odpowiednio.
+2. TLS i certyfikaty w Docker
+
+- Jeśli `TLS_ENABLED=true` i pliki certyfikatów nie istnieją, aplikacja automatycznie wygeneruje self-signed `cert.pem` i `key.pem` podczas startu kontenera.
+- Nie musisz montować certyfikatów z hosta do kontenera do szybkiego testu.
+- Jeżeli chcesz użyć własnych certyfikatów, umieść `cert.pem` i `key.pem` w katalogu projektu przed uruchomieniem Dockera i ustaw `TLS_CERTFILE` / `TLS_KEYFILE` w `.env`.
 
 3. Zbuduj obraz:
    ```bash
