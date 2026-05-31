@@ -32,6 +32,7 @@ TLS_KEYFILE = os.getenv("TLS_KEYFILE", "key.pem")
 PORT = int(os.getenv("PORT", "8001"))
 RECONNECT_GRACE_SECONDS = int(os.getenv("RECONNECT_GRACE_SECONDS", "30"))
 CLEANUP_INTERVAL_SECONDS = int(os.getenv("CLEANUP_INTERVAL_SECONDS", "60"))
+RATE_LIMIT_ENABLED = os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true"
 
 @dataclass
 class SessionInfo:
@@ -68,6 +69,11 @@ def get_client_ip(request_headers: dict) -> str:
 
 def check_rate_limit(client_ip: str) -> bool:
     """Check if client has exceeded connection rate limit."""
+    # Skip rate limiting when disabled or for unknown/local test clients
+    if not RATE_LIMIT_ENABLED:
+        return True
+    if not client_ip or client_ip == "unknown" or client_ip.startswith("127.") or client_ip == "::1":
+        return True
     now = time.time()
     if client_ip not in connection_attempts:
         connection_attempts[client_ip] = []
