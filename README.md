@@ -68,12 +68,8 @@ Web Nanny is a lightweight browser-based baby monitor with WebRTC audio streamin
    Copy-Item .env.example .env
    ```
 
-2. Generate TLS certificates locally if they are not already present.
-   `cert.pem` and `key.pem` are not stored in git and must exist in the repo root before starting Docker.
-   ```bash
-   openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes \
-     -subj "/C=PL/ST=Warsaw/L=Warsaw/O=WebNanny/CN=localhost"
-   ```
+2. The app now auto-generates `cert.pem` and `key.pem` on startup when TLS is enabled and certificates are missing. You do not need to pre-create host cert files for Docker.
+   - If you want to use your own certificates, place them in the project root before starting Docker and set `TLS_CERTFILE` / `TLS_KEYFILE` accordingly.
 
 3. Build the image:
    ```bash

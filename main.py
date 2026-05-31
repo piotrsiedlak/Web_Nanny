@@ -5,11 +5,16 @@ import os
 import secrets
 import time
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, Optional
 from uuid import uuid4
 
 import uvicorn
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.x509.oid import NameOID
 from fastapi import FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect, status
 from fastapi.responses import HTMLResponse
 
@@ -88,6 +93,7 @@ def validate_startup_config() -> None:
         logger.warning("AUTH_ENABLED is true but AUTH_TOKEN is empty or not set")
     
     if TLS_ENABLED:
+        ensure_tls_certificates()
         cert_path = Path(TLS_CERTFILE)
         key_path = Path(TLS_KEYFILE)
         if not cert_path.exists():
@@ -97,6 +103,58 @@ def validate_startup_config() -> None:
         logger.info("TLS certificates validated successfully")
     else:
         logger.warning("TLS_ENABLED is false - running without HTTPS/WSS")
+
+
+def generate_self_signed_cert(key_path: Path, cert_path: Path) -> None:
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    subject = issuer = x509.Name([
+        x509.NameAttribute(NameOID.COUNTRY_NAME, "PL"),
+        x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, "Warsaw"),
+        x509.NameAttribute(NameOID.LOCALITY_NAME, "Warsaw"),
+        x509.NameAttribute(NameOID.ORGANIZATION_NAME, "WebNanny"),
+        x509.NameAttribute(NameOID.COMMON_NAME, "localhost"),
+    ])
+    cert = (
+        x509.CertificateBuilder()
+        .subject_name(subject)
+        .issuer_name(issuer)
+        .public_key(key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(datetime.utcnow())
+        .not_valid_after(datetime.utcnow() + timedelta(days=365))
+        .add_extension(x509.SubjectAlternativeName([x509.DNSName("localhost")]), critical=False)
+        .sign(key, hashes.SHA256())
+    )
+
+    key_path.parent.mkdir(parents=True, exist_ok=True)
+    cert_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with key_path.open("wb") as f:
+        f.write(
+            key.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.TraditionalOpenSSL,
+                encryption_algorithm=serialization.NoEncryption(),
+            )
+        )
+
+    with cert_path.open("wb") as f:
+        f.write(cert.public_bytes(serialization.Encoding.PEM))
+
+
+def ensure_tls_certificates() -> None:
+    if not TLS_ENABLED:
+        return
+
+    key_path = Path(TLS_KEYFILE)
+    cert_path = Path(TLS_CERTFILE)
+
+    if key_path.exists() and cert_path.exists():
+        return
+
+    logger.warning("TLS certificate or key not found, generating self-signed certificates")
+    generate_self_signed_cert(key_path, cert_path)
+    logger.info("Generated self-signed TLS certificate at %s and key at %s", cert_path, key_path)
 
 
 def check_auth(token: Optional[str], auth_header: Optional[str] = None) -> bool:

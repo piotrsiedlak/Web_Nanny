@@ -66,12 +66,9 @@ Web Nanny to lekki monitor dla dziecka działający w przeglądarce z transmisj�
    Copy-Item .env.example .env
    ```
 
-2. Wygeneruj lokalnie certyfikaty TLS, jeśli nie znajdują się jeszcze w katalogu projektu.
-   `cert.pem` i `key.pem` nie są przechowywane w repozytorium Git i muszą istnieć przed uruchomieniem Docker.
-   ```bash
-   openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes \
-     -subj "/C=PL/ST=Warsaw/L=Warsaw/O=WebNanny/CN=localhost"
-   ```
+2. Aplikacja teraz automatycznie wygeneruje `cert.pem` i `key.pem` przy uruchamianiu, gdy TLS jest włączony i certyfikaty nie istnieją.
+   Nie musisz wcześniej tworzyć plików certyfikatów dla Dockera.
+   - Jeśli chcesz użyć własnych certyfikatów, umieść je w katalogu projektu przed uruchomieniem Dockera i ustaw `TLS_CERTFILE` / `TLS_KEYFILE` odpowiednio.
 
 3. Zbuduj obraz:
    ```bash
