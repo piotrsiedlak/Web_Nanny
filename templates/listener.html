@@ -3,6 +3,10 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="theme-color" content="#0f3460"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <link rel="manifest" href="/manifest.json"/>
   <title>{% if lang == 'en' %}🔊 Nanny – Listener{% else %}🔊 Niania – Odbiornik{% endif %}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -98,6 +102,7 @@
     const cryStatus = document.getElementById('cry-status');
     let wakeLock = null;
     let wakeLockRetry = null;
+    let wakeLockTimer = null;
 
     function startPing() {
       stopPing();
@@ -116,7 +121,7 @@
     }
 
     async function requestWakeLock() {
-      if (!('wakeLock' in navigator)) {
+      if (!('wakeLock' in navigator) || !listening) {
         return;
       }
       if (wakeLock) {
@@ -152,9 +157,12 @@
     }
 
     function keepWakeLock() {
-      if (listening && document.visibilityState === 'visible') {
-        requestWakeLock();
+      if (!listening) {
+        return;
       }
+      requestWakeLock();
+      clearTimeout(wakeLockTimer);
+      wakeLockTimer = setTimeout(keepWakeLock, 15000);
     }
 
     function createSignal() {
@@ -268,13 +276,11 @@
     }
 
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') {
-        keepWakeLock();
-        if (audioContext && audioContext.state === 'suspended') {
-          audioContext.resume().catch((error) => console.warn('Failed to resume audio context', error));
-        }
-        playAudioIfReady();
+      keepWakeLock();
+      if (audioContext && audioContext.state === 'suspended') {
+        audioContext.resume().catch((error) => console.warn('Failed to resume audio context', error));
       }
+      playAudioIfReady();
     });
 
     window.addEventListener('focus', () => {
@@ -283,6 +289,10 @@
         audioContext.resume().catch((error) => console.warn('Failed to resume audio context', error));
       }
       playAudioIfReady();
+    });
+
+    window.addEventListener('pagehide', () => {
+      keepWakeLock();
     });
 
     function setCryStatus(detected) {
@@ -443,6 +453,7 @@
 
     function stopListening() {
       listening = false;
+      clearTimeout(wakeLockTimer);
       btn.classList.remove('active');
       btn.textContent = '🔊';
       label.textContent = texts[lang].pressToListen;

@@ -16,7 +16,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
 from fastapi import FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect, status
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 logging.basicConfig(level=logging.INFO)
@@ -238,6 +238,16 @@ async def metrics():
         "listener_ws_active": listener_ws is not None,
         "uptime_seconds": time.time() - app_start_time,
     }
+
+
+@app.get("/manifest.json")
+async def manifest():
+    return FileResponse(Path(__file__).parent / "manifest.json", media_type="application/manifest+json")
+
+
+@app.get("/icon.svg")
+async def icon():
+    return FileResponse(Path(__file__).parent / "icon.svg", media_type="image/svg+xml")
 
 
 @app.get("/")

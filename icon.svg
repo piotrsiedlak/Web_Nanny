@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" role="img" aria-label="Web Nanny icon">
+  <rect width="192" height="192" rx="36" fill="#0f3460"/>
+  <circle cx="96" cy="96" r="56" fill="#e94560"/>
+  <path d="M96 56c-22 0-40 18-40 40 0 15 8 28 20 35v-11c0-7 4-13 11-16l9-4 9 4c7 3 11 9 11 16v11c12-7 20-20 20-35 0-22-18-40-40-40z" fill="#fff"/>
+</svg>
